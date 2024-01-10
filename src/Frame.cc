@@ -97,7 +97,7 @@ Frame::Frame(const Frame &frame)
 #endif
 }
 
-
+// 双目
 Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeStamp, ORBextractor* extractorLeft, ORBextractor* extractorRight, ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth, GeometricCamera* pCamera, Frame* pPrevF, const IMU::Calib &ImuCalib)
     :mpcpi(NULL), mpORBvocabulary(voc),mpORBextractorLeft(extractorLeft),mpORBextractorRight(extractorRight), mTimeStamp(timeStamp), mK(K.clone()), mK_(Converter::toMatrix3f(K)), mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth),
      mImuCalib(ImuCalib), mpImuPreintegrated(NULL), mpPrevFrame(pPrevF),mpImuPreintegratedFrame(NULL), mpReferenceKF(static_cast<KeyFrame*>(NULL)), mbIsSet(false), mbImuPreintegrated(false),
@@ -133,11 +133,13 @@ Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeSt
     if(mvKeys.empty())
         return;
 
+    // 特征点去畸变
     UndistortKeyPoints();
 
 #ifdef REGISTER_TIMES
     std::chrono::steady_clock::time_point time_StartStereoMatches = std::chrono::steady_clock::now();
 #endif
+    // 计算双目匹配（重点！）
     ComputeStereoMatches();
 #ifdef REGISTER_TIMES
     std::chrono::steady_clock::time_point time_EndStereoMatches = std::chrono::steady_clock::now();
@@ -285,7 +287,7 @@ Frame::Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeSt
     AssignFeaturesToGrid();
 }
 
-
+// 单目
 Frame::Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor* extractor,ORBVocabulary* voc, GeometricCamera* pCamera, cv::Mat &distCoef, const float &bf, const float &thDepth, Frame* pPrevF, const IMU::Calib &ImuCalib)
     :mpcpi(NULL),mpORBvocabulary(voc),mpORBextractorLeft(extractor),mpORBextractorRight(static_cast<ORBextractor*>(NULL)),
      mTimeStamp(timeStamp), mK(static_cast<Pinhole*>(pCamera)->toK()), mK_(static_cast<Pinhole*>(pCamera)->toK_()), mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth),
@@ -469,6 +471,7 @@ void Frame::SetImuPoseVelocity(const Eigen::Matrix3f &Rwb, const Eigen::Vector3f
     mbHasPose = true;
 }
 
+// 更新位姿矩阵
 void Frame::UpdatePoseMatrices()
 {
     Sophus::SE3<float> Twc = mTcw.inverse();
@@ -808,6 +811,7 @@ void Frame::ComputeImageBounds(const cv::Mat &imLeft)
     }
 }
 
+// 计算双目匹配 ！
 void Frame::ComputeStereoMatches()
 {
     mvuRight = vector<float>(N,-1.0f);
@@ -949,7 +953,7 @@ void Frame::ComputeStereoMatches()
             float bestuR = mvScaleFactors[kpL.octave]*((float)scaleduR0+(float)bestincR+deltaR);
 
             float disparity = (uL-bestuR);
-
+            // 计算深度
             if(disparity>=minD && disparity<maxD)
             {
                 if(disparity<=0)
@@ -968,6 +972,7 @@ void Frame::ComputeStereoMatches()
     const float median = vDistIdx[vDistIdx.size()/2].first;
     const float thDist = 1.5f*1.4f*median;
 
+    // 以一种方法（？）剔除匹配
     for(int i=vDistIdx.size()-1;i>=0;i--)
     {
         if(vDistIdx[i].first<thDist)
@@ -1003,7 +1008,7 @@ void Frame::ComputeStereoFromRGBD(const cv::Mat &imDepth)
         }
     }
 }
-
+// 双目 重投影
 bool Frame::UnprojectStereo(const int &i, Eigen::Vector3f &x3D)
 {
     const float z = mvDepth[i];
@@ -1018,7 +1023,7 @@ bool Frame::UnprojectStereo(const int &i, Eigen::Vector3f &x3D)
     } else
         return false;
 }
-
+// IMU 是否 预积分
 bool Frame::imuIsPreintegrated()
 {
     unique_lock<std::mutex> lock(*mpMutexImu);
@@ -1123,7 +1128,9 @@ Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeSt
 
 }
 
+// 直译：计算 立体 鱼眼 匹配
 void Frame::ComputeStereoFishEyeMatches() {
+    // 拿到特征点、描述子
     //Speed it up by matching keypoints in the lapping area
     vector<cv::KeyPoint> stereoLeft(mvKeys.begin() + monoLeft, mvKeys.end());
     vector<cv::KeyPoint> stereoRight(mvKeysRight.begin() + monoRight, mvKeysRight.end());
@@ -1140,7 +1147,7 @@ void Frame::ComputeStereoFishEyeMatches() {
 
     //Perform a brute force between Keypoint in the left and right image
     vector<vector<cv::DMatch>> matches;
-
+    // 一个匹配算法、DF knn最近邻
     BFmatcher.knnMatch(stereoDescLeft,stereoDescRight,matches,2);
 
     int nMatches = 0;

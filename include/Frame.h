@@ -328,6 +328,7 @@ public:
     //Number of KeyPoints extracted in the left and right images
     int Nleft, Nright;
     //Number of Non Lapping Keypoints
+    // 特征点的 index,
     int monoLeft, monoRight;
 
     //For stereo matching
