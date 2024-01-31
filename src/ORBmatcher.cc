@@ -324,6 +324,9 @@ namespace ORB_SLAM3
 
                     }
 
+
+                    // Step 4：根据阈值 和 角度投票剔除误匹配
+                    // Step 4.1：第一关筛选：匹配距离必须小于设定阈值
                     if(bestDist1<=TH_LOW)
                     {
                         if(static_cast<float>(bestDist1)<mfNNratio*static_cast<float>(bestDist2))
@@ -401,6 +404,7 @@ namespace ORB_SLAM3
             }
         }
 
+        // Step 5 根据方向剔除误匹配的点
         if(mbCheckOrientation)
         {
             int ind1=-1;

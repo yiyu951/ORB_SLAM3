@@ -10,8 +10,8 @@ set(CMAKE_CXX_STANDARD  14)
 set(CMAKE_CXX_STANDARD_REQUIRED  ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS  ON)
 #set(CMAKE_CXX_FLAGS "-w")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -w -Wall   -O3")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -w -Wall   -O3")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -w -Wall   -O3")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -w -Wall   -O3")
 set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -march=native")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -march=native")
 
@@ -33,19 +33,24 @@ endif()
 
 LIST(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake_modules)
 
-find_package(OpenCV 4.4)
-   if(NOT OpenCV_FOUND)
-      message(FATAL_ERROR "OpenCV > 4.4 not found.")
-   endif()
+find_package(OpenCV)
+message("OpenCV VIRSION = ${OpenCV_VERSION}")
+message("OpenCV INCLUDE = ${OpenCV_INCLUDE_DIRS}")
 
-MESSAGE("OPENCV VERSION:")
-MESSAGE(${OpenCV_VERSION})
+find_package(fmt REQUIRED)
+#    if(NOT OpenCV_FOUND)
+#       message(FATAL_ERROR "OpenCV > 4.4 not found.")
+#    endif()
+
+# MESSAGE("OPENCV VERSION:")
+# MESSAGE(${OpenCV_VERSION})
 
 find_package(Eigen3 3.1.0 REQUIRED)
 find_package(Pangolin REQUIRED)
 # find_package(realsense2)
 
 include_directories(
+        ${OpenCV_INCLUDE_DIRS}
 ${PROJECT_SOURCE_DIR}
 ${PROJECT_SOURCE_DIR}/include
 ${PROJECT_SOURCE_DIR}/include/CameraModels
@@ -126,6 +131,7 @@ ${PROJECT_SOURCE_DIR}/Thirdparty/DBoW2/lib/libDBoW2.so
 ${PROJECT_SOURCE_DIR}/Thirdparty/g2o/lib/libg2o.so
 -lboost_serialization
 -lcrypto
+fmt::fmt
 )
 
 # If RealSense SDK is found the library is added and its examples compiled

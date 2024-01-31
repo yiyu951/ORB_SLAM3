@@ -344,9 +344,23 @@ public:
     //Grid for the right image
     std::vector<std::size_t> mGridRight[FRAME_GRID_COLS][FRAME_GRID_ROWS];
 
-    Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeStamp, ORBextractor* extractorLeft, ORBextractor* extractorRight, ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth, GeometricCamera* pCamera, GeometricCamera* pCamera2, Sophus::SE3f& Tlr,Frame* pPrevF = static_cast<Frame*>(NULL), const IMU::Calib &ImuCalib = IMU::Calib());
+    Frame(const cv::Mat &imLeft, const cv::Mat &imRight,
+          const double &timeStamp,
+          ORBextractor* extractorLeft, ORBextractor* extractorRight, ORBVocabulary* voc,
+          cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth,
+          GeometricCamera* pCamera, GeometricCamera* pCamera2,
+          Sophus::SE3f& Tlr,Frame* pPrevF = static_cast<Frame*>(NULL),
+          const IMU::Calib &ImuCalib = IMU::Calib());
 
-    //Stereo fisheye
+
+//    Frame(const cv::Mat &imLeft, const cv::Mat &imRight,
+//          const double &timeStamp,
+//          ORBextractor* extractorLeft, ORBextractor* extractorRight, ORBVocabulary* voc,
+//          cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth,
+//          GeometricCamera* pCamera,Frame* pPrevF = static_cast<Frame*>(NULL),
+//          const IMU::Calib &ImuCalib = IMU::Calib());
+
+        //Stereo fisheye
     void ComputeStereoFishEyeMatches();
 
     bool isInFrustumChecks(MapPoint* pMP, float viewingCosLimit, bool bRight = false);

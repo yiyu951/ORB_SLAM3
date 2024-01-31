@@ -308,11 +308,12 @@ namespace ORB_SLAM3 {
         Eigen::Vector3f r1 = this->unprojectEig(kp1.pt);
         Eigen::Vector3f r2 = pCamera2->unprojectEig(kp2.pt);
 
-        //Check parallax
+        //Check parallax(视差)
         Eigen::Vector3f r21 = R12 * r2;
 
         const float cosParallaxRays = r1.dot(r21)/(r1.norm() *r21.norm());
 
+        // 平行
         if(cosParallaxRays > 0.9998){
             return -1;
         }

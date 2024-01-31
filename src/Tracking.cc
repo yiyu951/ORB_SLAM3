@@ -34,12 +34,16 @@
 #include <mutex>
 #include <chrono>
 
+#include <fmt/format.h>
+#include <fstream>
 
 using namespace std;
 
 namespace ORB_SLAM3
 {
 
+    std::ofstream f_out{"/home/zhonglingjun/GXT/Fusion_test/data/euroc_data_V2_01_easy.txt"};
+    std::ofstream f_out_tum{"/home/zhonglingjun/GXT/Fusion_test/data/euroc_data_tum_V2_01_easy.txt"};
 
 Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer, MapDrawer *pMapDrawer, Atlas *pAtlas, KeyFrameDatabase* pKFDB, const string &strSettingPath, const int sensor, Settings* settings, const string &_nameSeq):
     mState(NO_IMAGES_YET), mSensor(sensor), mTrackedFr(0), mbStep(false),
@@ -1493,6 +1497,7 @@ Sophus::SE3f Tracking::GrabImageStereo(const cv::Mat &imRectLeft, const cv::Mat 
     if (mSensor == System::STEREO && !mpCamera2)
         mCurrentFrame = Frame(mImGray,imGrayRight,timestamp,mpORBextractorLeft,mpORBextractorRight,mpORBVocabulary,mK,mDistCoef,mbf,mThDepth,mpCamera);
     else if(mSensor == System::STEREO && mpCamera2)
+    // mpCamera2 只有相机模型为 KannalaBrandt8时才会有
         mCurrentFrame = Frame(mImGray,imGrayRight,timestamp,mpORBextractorLeft,mpORBextractorRight,mpORBVocabulary,mK,mDistCoef,mbf,mThDepth,mpCamera,mpCamera2,mTlr);
     else if(mSensor == System::IMU_STEREO && !mpCamera2)
         mCurrentFrame = Frame(mImGray,imGrayRight,timestamp,mpORBextractorLeft,mpORBextractorRight,mpORBVocabulary,mK,mDistCoef,mbf,mThDepth,mpCamera,&mLastFrame,*mpImuCalib);
@@ -1871,18 +1876,8 @@ void Tracking::Track()
 
     if ((mSensor == System::IMU_MONOCULAR || mSensor == System::IMU_STEREO || mSensor == System::IMU_RGBD) && !mbCreatedMap)
     {
-#ifdef REGISTER_TIMES
-        std::chrono::steady_clock::time_point time_StartPreIMU = std::chrono::steady_clock::now();
-#endif
         // IMU 预积分
         PreintegrateIMU();
-#ifdef REGISTER_TIMES
-        std::chrono::steady_clock::time_point time_EndPreIMU = std::chrono::steady_clock::now();
-
-        double timePreImu = std::chrono::duration_cast<std::chrono::duration<double,std::milli> >(time_EndPreIMU - time_StartPreIMU).count();
-        vdIMUInteg_ms.push_back(timePreImu);
-#endif
-
     }
     mbCreatedMap = false;
 
@@ -1926,13 +1921,14 @@ void Tracking::Track()
     }
     else
     {
+        ///
+        /** 帧间Tracking和局部地图(local map)Tracking
+         * 1. TrackReferenceKeyFrame
+         * 2. TrackWithMotionModel
+         * 3. TrackLocalMap
+         */
         // System is initialized. Track Frame.
         bool bOK;
-
-#ifdef REGISTER_TIMES
-        std::chrono::steady_clock::time_point time_StartPosePred = std::chrono::steady_clock::now();
-#endif
-
         // Initial camera pose estimation using motion model or relocalization (if tracking is lost)
         if(!mbOnlyTracking)
         {
@@ -1942,10 +1938,9 @@ void Tracking::Track()
             // you explicitly activate the "only tracking" mode.
             if(mState==OK)
             {
-
                 // Local Mapping might have changed some MapPoints tracked in last frame
                 CheckReplacedInLastFrame();
-
+                // (速度为空并且imu未初始化) 或者当前帧ID小于上次重定位帧ID+2
                 if((!mbVelocity && !pCurrentMap->isImuInitialized()) || mCurrentFrame.mnId<mnLastRelocFrameId+2)
                 {
                     Verbose::PrintMess("TRACK: Track with respect to the reference KF ", Verbose::VERBOSITY_DEBUG);
@@ -2112,17 +2107,6 @@ void Tracking::Track()
         if(!mCurrentFrame.mpReferenceKF)
             mCurrentFrame.mpReferenceKF = mpReferenceKF;
 
-#ifdef REGISTER_TIMES
-        std::chrono::steady_clock::time_point time_EndPosePred = std::chrono::steady_clock::now();
-
-        double timePosePred = std::chrono::duration_cast<std::chrono::duration<double,std::milli> >(time_EndPosePred - time_StartPosePred).count();
-        vdPosePred_ms.push_back(timePosePred);
-#endif
-
-
-#ifdef REGISTER_TIMES
-        std::chrono::steady_clock::time_point time_StartLMTrack = std::chrono::steady_clock::now();
-#endif
         // If we have an initial estimation of the camera pose and matching. Track the local map.
         if(!mbOnlyTracking)
         {
@@ -2194,17 +2178,39 @@ void Tracking::Track()
             }
         }
 
-#ifdef REGISTER_TIMES
-        std::chrono::steady_clock::time_point time_EndLMTrack = std::chrono::steady_clock::now();
-
-        double timeLMTrack = std::chrono::duration_cast<std::chrono::duration<double,std::milli> >(time_EndLMTrack - time_StartLMTrack).count();
-        vdLMTrack_ms.push_back(timeLMTrack);
-#endif
-
         // Update drawer
         mpFrameDrawer->Update(this);
         if(mCurrentFrame.isSet())
+        {
             mpMapDrawer->SetCurrentCameraPose(mCurrentFrame.GetPose());
+
+            // TODO: 添加数据保存，记得删
+            //设置浮点数按定点方式输出
+            double mCurrentFrameTimestamp = mCurrentFrame.mTimeStamp;
+            auto mCurrentFramePose = mCurrentFrame.GetPose();
+
+            auto time_str = fmt::format("{:.7f}", mCurrentFrameTimestamp);
+
+            f_out << time_str <<
+            " " << mCurrentFramePose.translation()(0, 0) <<
+            " " << mCurrentFramePose.translation()(1, 0) <<
+            " " << mCurrentFramePose.translation()(2, 0) <<
+            " " << mCurrentFramePose.so3().log()(0, 0) <<
+            " " << mCurrentFramePose.so3().log()(1, 0) <<
+            " " << mCurrentFramePose.so3().log()(2, 0) <<
+             std::endl;
+            //设置浮点数按定点方式输出
+            f_out_tum << time_str <<
+            " " << mCurrentFramePose.translation()(0, 0) <<
+            " " << mCurrentFramePose.translation()(1, 0) <<
+            " " << mCurrentFramePose.translation()(2, 0) <<
+            " " << mCurrentFramePose.so3().unit_quaternion().x() <<
+            " " << mCurrentFramePose.so3().unit_quaternion().y() <<
+            " " << mCurrentFramePose.so3().unit_quaternion().z() <<
+            " " << mCurrentFramePose.so3().unit_quaternion().w() << std::endl;
+
+        }
+
 
         if(bOK || mState==RECENTLY_LOST)
         {
@@ -2300,7 +2306,6 @@ void Tracking::Track()
 
 
 
-
     if(mState==OK || mState==RECENTLY_LOST)
     {
         // Store frame pose information to retrieve the complete camera trajectory afterwards.
@@ -2323,19 +2328,9 @@ void Tracking::Track()
 
     }
 
-#ifdef REGISTER_LOOP
-    if (Stop()) {
-
-        // Safe area to stop
-        while(isStopped())
-        {
-            usleep(3000);
-        }
-    }
-#endif
 }
 
-
+// !Important
 void Tracking::StereoInitialization()
 {
     if(mCurrentFrame.N>500)

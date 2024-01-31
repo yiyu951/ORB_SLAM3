@@ -822,6 +822,7 @@ namespace ORB_SLAM3 {
                     }
 
                 }
+        
             }
 
             vector<KeyPoint> &keypoints = allKeypoints[level];

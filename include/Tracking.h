@@ -206,8 +206,14 @@ protected:
     void CreateInitialMapMonocular();
 
     void CheckReplacedInLastFrame();
+    /**
+     * @brief 帧间track
+     */
     bool TrackReferenceKeyFrame();
     void UpdateLastFrame();
+    /**
+     * @brief 根据速度track
+     */
     bool TrackWithMotionModel();
     bool PredictStateIMU();
 
@@ -216,7 +222,9 @@ protected:
     void UpdateLocalMap();
     void UpdateLocalPoints();
     void UpdateLocalKeyFrames();
-
+    /**
+     * @brief 地图track
+     */
     bool TrackLocalMap();
     void SearchLocalPoints();
 

@@ -287,7 +287,7 @@ void LoadImages(const string &strPathLeft, const string &strPathRight, const str
 
             vstrImageLeft.push_back(strPathLeft + "/" + item + ".png");
             vstrImageRight.push_back(strPathRight + "/" + item + ".png");
-
+//            cout << "read" << endl;
             double t = stod(item);
             vTimeStamps.push_back(t/1e9);
         }

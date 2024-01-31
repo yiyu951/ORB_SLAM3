@@ -460,6 +460,7 @@ void MapDrawer::GetCurrentOpenGLCameraMatrix(pangolin::OpenGlMatrix &M, pangolin
     }
 
     MOw.SetIdentity();
+    // t
     MOw.m[12] = Twc(0,3);
     MOw.m[13] = Twc(1,3);
     MOw.m[14] = Twc(2,3);
