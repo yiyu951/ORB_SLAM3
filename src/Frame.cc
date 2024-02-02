@@ -854,7 +854,7 @@ void Frame::ComputeStereoMatches()
     for(int iL=0; iL<N; iL++)
     {
         const cv::KeyPoint &kpL = mvKeys[iL];
-        const int &levelL = kpL.octave;
+        const int &levelL = kpL.octave; // 金字塔的层次
         const float &vL = kpL.pt.y;
         const float &uL = kpL.pt.x;
 
@@ -863,8 +863,8 @@ void Frame::ComputeStereoMatches()
         if(vCandidates.empty())
             continue;
 
-        const float minU = uL-maxD;
-        const float maxU = uL-minD;
+        const float minU = uL-maxD;// ul - fx
+        const float maxU = uL-minD;// ul - 0
 
         if(maxU<0)
             continue;
@@ -880,6 +880,7 @@ void Frame::ComputeStereoMatches()
             const size_t iR = vCandidates[iC];
             const cv::KeyPoint &kpR = mvKeysRight[iR];
 
+            // 不再同一层
             if(kpR.octave<levelL-1 || kpR.octave>levelL+1)
                 continue;
 
@@ -898,7 +899,9 @@ void Frame::ComputeStereoMatches()
             }
         }
 
+        // 每个左图特征点 bestDist 最小dist
         // Subpixel match by correlation
+        // 精确SAD匹配
         if(bestDist<thOrbDist)
         {
             // coordinates in image pyramid at keypoint scale
@@ -926,8 +929,12 @@ void Frame::ComputeStereoMatches()
             for(int incR=-L; incR<=+L; incR++)
             {
                 cv::Mat IR = mpORBextractorRight->mvImagePyramid[kpL.octave].rowRange(scaledvL-w,scaledvL+w+1).colRange(scaleduR0+incR-w,scaleduR0+incR+w+1);
+                // ORB3 没有这一步   
+                // IR.convertTo(IR, CV_32F);
+                // // 图像块均值归一化，降低亮度变化对相似度计算的影响
+                // IR = IR - IR.at<float>(w, w) * cv::Mat::ones(IR.rows, IR.cols, CV_32F);
 
-                float dist = cv::norm(IL,IR,cv::NORM_L1);
+                float dist = cv::norm(IL, IR, cv::NORM_L1);
                 if(dist<bestDist)
                 {
                     bestDist =  dist;
@@ -940,8 +947,18 @@ void Frame::ComputeStereoMatches()
             if(bestincR==-L || bestincR==L)
                 continue;
 
-            // Sub-pixel match (Parabola fitting)
-            const float dist1 = vDists[L+bestincR-1];
+            // Step 4. 亚像素插值, 使用最佳匹配点及其左右相邻点构成抛物线
+            // 使用3点拟合抛物线的方式，用极小值代替之前计算的最优视差值
+            //    \                 / <- 由视差为14，15，16的相似度拟合的抛物线
+            //      .             .(16)
+            //         .14     .(15) <- int/uchar最佳视差值
+            //              .
+            //           （14.5）<- 真实的视差值
+            //   deltaR = 15.5 - 16 = -0.5
+            // 公式参考opencv sgbm源码中的亚像素插值公式
+            // 或论文<<On Building an Accurate Stereo Matching System on Graphics Hardware>> 公式7
+
+            const float dist1 = vDists[L + bestincR - 1];
             const float dist2 = vDists[L+bestincR];
             const float dist3 = vDists[L+bestincR+1];
 
@@ -1039,6 +1056,7 @@ void Frame::setIntegrated()
     mbImuPreintegrated = true;
 }
 
+// 鱼眼双目
 Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeStamp, ORBextractor* extractorLeft, ORBextractor* extractorRight, ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth, GeometricCamera* pCamera, GeometricCamera* pCamera2, Sophus::SE3f& Tlr,Frame* pPrevF, const IMU::Calib &ImuCalib)
         :mpcpi(NULL), mpORBvocabulary(voc),mpORBextractorLeft(extractorLeft),mpORBextractorRight(extractorRight), mTimeStamp(timeStamp), mK(K.clone()), mK_(Converter::toMatrix3f(K)),  mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth),
          mImuCalib(ImuCalib), mpImuPreintegrated(NULL), mpPrevFrame(pPrevF),mpImuPreintegratedFrame(NULL), mpReferenceKF(static_cast<KeyFrame*>(NULL)), mbImuPreintegrated(false), mpCamera(pCamera), mpCamera2(pCamera2),

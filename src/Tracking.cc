@@ -2393,7 +2393,9 @@ void Tracking::StereoInitialization()
                     mCurrentFrame.mvpMapPoints[i]=pNewMP;
                 }
             }
-        } else{
+        } 
+        // 鱼眼
+        else{
             for(int i = 0; i < mCurrentFrame.Nleft; i++){
                 int rightIndex = mCurrentFrame.mvLeftToRightMatch[i];
                 if(rightIndex != -1){
