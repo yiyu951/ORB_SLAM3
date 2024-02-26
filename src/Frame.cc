@@ -1028,6 +1028,7 @@ void Frame::ComputeStereoFromRGBD(const cv::Mat &imDepth)
         }
     }
 }
+
 // 双目 重投影
 bool Frame::UnprojectStereo(const int &i, Eigen::Vector3f &x3D)
 {
@@ -1043,6 +1044,7 @@ bool Frame::UnprojectStereo(const int &i, Eigen::Vector3f &x3D)
     } else
         return false;
 }
+
 // IMU 是否 预积分
 bool Frame::imuIsPreintegrated()
 {
